@@ -146,26 +146,25 @@ st.divider()
 
 # ----------------------------- Downgrade / protocol usage -------------------
 st.subheader("⬇️ Downgrade Risk & Protocol Usage")
-left, right = st.columns(2)
+long = f_servers.melt(id_vars="Department", value_vars=ALGOS, var_name="Algorithm", value_name="Servers")
+fig2 = px.bar(
+    long, x="Department", y="Servers", color="Algorithm", barmode="stack",
+    color_discrete_map=ALGO_COLORS, category_orders={"Algorithm": ALGOS},
+)
+fig2.update_layout(height=380, margin=dict(l=10, r=10, t=10, b=10), yaxis_title="Active servers")
+st.plotly_chart(fig2, use_container_width=True)
 
-with left:
-    long = f_servers.melt(id_vars="Department", value_vars=ALGOS, var_name="Algorithm", value_name="Servers")
-    fig2 = px.bar(
-        long, x="Department", y="Servers", color="Algorithm", barmode="stack",
-        color_discrete_map=ALGO_COLORS, category_orders={"Algorithm": ALGOS},
-    )
-    fig2.update_layout(height=380, margin=dict(l=10, r=10, t=10, b=10), yaxis_title="Active servers")
-    st.plotly_chart(fig2, use_container_width=True)
-
-with right:
-    t = f_servers.copy()
-    t["Legacy"] = t[LEGACY].sum(axis=1)
-    t["Post-Quantum"] = t[["ML-KEM-512", "ML-KEM-768"]].sum(axis=1)
-    t["Downgrade Exposure %"] = (t["Downgrade-Capable"] / (t["Legacy"] + t["Post-Quantum"]) * 100).round(1)
-    t["Risk"] = pd.cut(t["Downgrade Exposure %"], [-1, 15, 25, 1000], labels=["Low", "Medium", "High"])
-    st.dataframe(
-        t[["Department", "Legacy", "Post-Quantum", "Downgrade-Capable", "Downgrade Exposure %", "Risk"]]
-        .style.background_gradient(subset=["Downgrade Exposure %"], cmap="OrRd"),
-        use_container_width=True, hide_index=True,
-    )
-    st.caption("Downgrade-capable servers still accept RSA/ECC fallback, letting an attacker force a non-PQ handshake.")
+# Table is rendered full width, below the chart, so all columns fit without horizontal scrolling.
+t = f_servers.copy()
+t["Legacy"] = t[LEGACY].sum(axis=1)
+t["Post-Quantum"] = t[["ML-KEM-512", "ML-KEM-768"]].sum(axis=1)
+t["Downgrade Exposure %"] = (t["Downgrade-Capable"] / (t["Legacy"] + t["Post-Quantum"]) * 100).round(1)
+t["Risk"] = pd.cut(t["Downgrade Exposure %"], [-1, 15, 25, 1000], labels=["Low", "Medium", "High"]).astype(str)
+st.dataframe(
+    t[["Department", "Legacy", "Post-Quantum", "Downgrade-Capable", "Downgrade Exposure %", "Risk"]]
+    .style.background_gradient(subset=["Downgrade Exposure %"], cmap="OrRd")
+    .format({"Downgrade Exposure %": "{:.1f}"}),
+    use_container_width=True, hide_index=True,
+    height=35 * (len(t) + 1) + 3,
+)
+st.caption("Downgrade-capable servers still accept RSA/ECC fallback, letting an attacker force a non-PQ handshake.")
